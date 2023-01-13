@@ -1,0 +1,62 @@
+---
+title: "visualization"
+author: "aaron kollo"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+
+
+```{r packages, echo=FALSE,  eval=TRUE}
+library('dplyr')
+library('tidyverse')
+library('ggplot2')
+library('ggcorrplot')
+library('ggVennDiagram')
+```
+
+## Load data
+
+
+
+```{r load and select data, echo=FALSE}
+remove(list=ls())
+df1 <- read.table('data/raw_final_df2.txt',sep='\t',header=1)
+df <- df1
+#specify columns you want to use for the plotting, so that the corrplot  does not get too messy
+#the features below have been selected after having looked at which influence the random forest model the most
+cols_for_supervised <- c('ensembl_gene_id',  'loeuf_score', 'ncGERP', 'ncRVIS',  'RVIS_score','num_enh', 'num_super_enh',  'median_tpm',  'pHaplo', 'pTriplo', 'Episcore','pLI','tau','Avg_VG_eQTL','Avg_VG_AE')
+df <- df %>%
+  select(ensembl_gene_id, loeuf_score, RVIS_score, ncGERP, ncRVIS, ncCADD,  pHaplo, pTriplo, Episcore, pLI, median_tpm,tau, num_enh, num_super_enh, Avg_VG_eQTL,  Avg_VG_AE)
+```
+
+
+```{r clean selected data, echo=FALSE}
+
+df <- distinct(df, ensembl_gene_id, .keep_all=TRUE)
+df$log_eqtl <-  log(df$Avg_VG_eQTL)
+df$log_ae <-  log(df$Avg_VG_AE)
+
+for_plot <- df %>%
+  select(!c(ensembl_gene_id, Avg_VG_eQTL, Avg_VG_AE))
+for_plot[names(for_plot)] <- lapply(for_plot[names(for_plot)], as.numeric)
+```
+Correlation plot
+```{r correlation plot, fig.width=8, fig.height=8}
+corr <- cor(for_plot, use = 'pairwise.complete.obs', method= 'pearson') #full corrplot matrix
+corr <- corr[order(corr[,'log_ae'], decreasing = FALSE),order(corr['log_ae',], decreasing = FALSE) ] #optional
+par(mar = c(0.1, 0.1, 0.1, 0.1))        # Reduce space around plots
+ggc <- ggcorrplot(corr,
+           outline.col = "white",
+           lab=TRUE)
+#svg('images/final_report/corr_plot2.svg', width = 10, height= 8)
+ggc
+#dev.off()
+
+```
